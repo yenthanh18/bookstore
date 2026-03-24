@@ -1,94 +1,26 @@
-import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { cartService } from '../services/cartService';
+import { useCart } from '../context/CartContext';
 import { trackViewCart } from '../services/analyticsService';
-import { unwrapObject } from '../services/apiClient';
+import { useEffect } from 'react';
 
 export default function Cart() {
   const navigate = useNavigate();
-  const [cartItems, setCartItems] = useState([]);
-  const [cartSummary, setCartSummary] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [updating, setUpdating] = useState(false);
-  const [error, setError] = useState(null);
-  
-  const subtotal = cartSummary?.subtotal ?? cartItems.reduce((acc, item) => acc + (item.unit_price * item.quantity), 0);
-  const taxes = cartSummary?.taxes ?? (subtotal * 0.08);
-  const total = cartSummary?.total ?? (subtotal + taxes);
-
-  const fetchCart = async () => {
-    try {
-      const res = await cartService.getCart();
-      const cartData = unwrapObject(res);
-      const items = cartData.items || [];
-      setCartItems(items);
-      setCartSummary(cartData.summary || null);
-      if (items.length > 0) {
-        trackViewCart(items, subtotal + (items.length > 0 ? (subtotal * 0.08) : 0));
-      }
-    } catch (err) {
-      console.error(err);
-      setError("Failed to load your cart. Check your connection.");
-    } finally {
-      setLoading(false);
-    }
-  };
+  const { cartItems, summary, updateQuantity, removeFromCart } = useCart();
 
   useEffect(() => {
-    fetchCart();
-  }, []);
+    if (cartItems.length > 0) {
+      trackViewCart(cartItems, summary.total);
+    }
+  }, [cartItems.length]); // Only track on mount or major change
 
-  const handleUpdate = async (productId, currentQty, delta) => {
+  const handleUpdate = (productId, currentQty, delta) => {
     const newQty = currentQty + delta;
-    if (newQty < 1) return handleRemove(productId);
-    
-    setUpdating(true);
-    try {
-      await cartService.updateCartItem(productId, newQty);
-      // Optimistic update
-      setCartItems(items => items.map(item => 
-        (item.product_id === productId) 
-          ? { ...item, quantity: newQty } 
-          : item
-      ));
-    } catch (err) {
-      alert("Could not update item quantity.");
-    } finally {
-      setUpdating(false);
-    }
+    updateQuantity(productId, newQty);
   };
 
-  const handleRemove = async (productId) => {
-    setUpdating(true);
-    try {
-      await cartService.removeCartItem(productId);
-      setCartItems(items => items.filter(item => item.product_id !== productId));
-    } catch (err) {
-      alert("Could not remove item from cart.");
-    } finally {
-      setUpdating(false);
-    }
+  const handleRemove = (productId) => {
+    removeFromCart(productId);
   };
-
-  if (loading) {
-    return (
-      <div className="min-h-screen pt-32 flex flex-col items-center justify-center">
-        <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
-        <p className="mt-4 text-on-surface-variant">Retrieving your collection...</p>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="min-h-screen pt-32 px-4 text-center flex flex-col gap-4 items-center">
-        <span className="material-symbols-outlined text-6xl text-error">error</span>
-        <h1 className="text-3xl font-bold font-headline">Cart Error</h1>
-        <p className="text-on-surface-variant max-w-sm">{error}</p>
-        <button onClick={fetchCart} className="bg-primary text-white px-6 py-3 rounded-full font-bold mt-4">Retry</button>
-      </div>
-    );
-  }
 
   return (
     <div className="pt-24 pb-20 px-4 md:px-8 max-w-screen-2xl mx-auto min-h-screen">
@@ -98,10 +30,10 @@ export default function Cart() {
           <div className="flex-grow space-y-8">
             <div className="flex items-end justify-between">
               <h1 className="text-4xl md:text-5xl font-black font-headline tracking-tighter text-on-surface">Your Library Cart</h1>
-              <p className="text-on-surface-variant font-medium">{cartItems.length} Items Selected</p>
+              <p className="text-on-surface-variant font-medium">{summary.count} Items Selected</p>
             </div>
             
-            <div className={`space-y-4 ${updating ? 'opacity-50 pointer-events-none' : ''} transition-opacity duration-300`}>
+            <div className="space-y-4 transition-opacity duration-300">
               {cartItems.length === 0 ? (
                 <div className="bg-surface-container-lowest p-12 rounded-xl text-center border border-outline-variant/10 shadow-sm flex flex-col items-center">
                   <span className="material-symbols-outlined text-6xl text-outline mb-4">shopping_cart</span>
@@ -141,7 +73,7 @@ export default function Cart() {
                           </div>
                           <div className="text-right">
                             <p className="text-xs text-on-surface-variant uppercase tracking-widest font-bold">Subtotal</p>
-                            <p className="text-xl font-black text-primary">${(item.unit_price * item.quantity).toFixed(2)}</p>
+                            <p className="text-xl font-black text-primary">${(item.final_price * item.quantity).toFixed(2)}</p>
                           </div>
                         </div>
                       </div>
@@ -160,19 +92,19 @@ export default function Cart() {
                 <div className="space-y-4 mb-8">
                   <div className="flex justify-between text-on-surface-variant">
                     <span>Subtotal</span>
-                    <span className="font-bold text-on-surface">${subtotal.toFixed(2)}</span>
+                    <span className="font-bold text-on-surface">${summary.subtotal.toFixed(2)}</span>
                   </div>
                   <div className="flex justify-between text-on-surface-variant">
                     <span>Estimated Shipping</span>
-                    <span className="font-bold text-on-surface">Free</span>
+                    <span className="font-bold text-green-600">Free</span>
                   </div>
                   <div className="flex justify-between text-on-surface-variant">
-                    <span>Taxes</span>
-                    <span className="font-bold text-on-surface">${taxes.toFixed(2)}</span>
+                    <span>Taxes (8%)</span>
+                    <span className="font-bold text-on-surface">${summary.tax.toFixed(2)}</span>
                   </div>
                   <div className="pt-4 border-t border-outline-variant/20 flex justify-between items-end">
                     <span className="text-lg font-bold">Total</span>
-                    <span className="text-3xl font-black text-primary">${total.toFixed(2)}</span>
+                    <span className="text-3xl font-black text-primary">${summary.total.toFixed(2)}</span>
                   </div>
                 </div>
                 <button 

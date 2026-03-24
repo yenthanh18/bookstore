@@ -1,36 +1,21 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useState, useEffect, useMemo } from 'react';
-import { cartService } from '../../services/cartService';
-import { unwrapObject } from '../../services/apiClient';
+import { useCart } from '../../context/CartContext';
+import { useWishlist } from '../../context/WishlistContext';
+import { useAuth } from '../../context/AuthContext';
 
 export default function Navbar() {
   const location = useLocation();
   const navigate = useNavigate();
-  const [cartCount, setCartCount] = useState(0);
+  const { summary } = useCart();
+  const { wishlistItems } = useWishlist();
+  const { user } = useAuth();
+  
+  const cartCount = summary.count || 0;
+  const wishlistCount = wishlistItems.length || 0;
+
   const [mobileOpen, setMobileOpen] = useState(false);
   const [collectionsOpen, setCollectionsOpen] = useState(false);
-
-  useEffect(() => {
-    const fetchCartCount = async () => {
-      try {
-        const res = await cartService.getCart();
-        const data = unwrapObject(res);
-        if (data.summary) {
-          setCartCount(data.summary.total_quantity || data.summary.total_items || 0);
-        } else if (data.items) {
-          setCartCount(data.items.reduce((acc, item) => acc + Number(item.quantity || 0), 0));
-        } else {
-          setCartCount(0);
-        }
-      } catch (err) {
-        setCartCount(0);
-      }
-    };
-
-    fetchCartCount();
-    window.addEventListener('cart_updated', fetchCartCount);
-    return () => window.removeEventListener('cart_updated', fetchCartCount);
-  }, []);
 
   useEffect(() => {
     setMobileOpen(false);
@@ -221,9 +206,14 @@ export default function Navbar() {
             </div>
 
             <div className="flex items-center gap-2 md:gap-3 shrink-0">
-              <button className="hidden md:flex w-11 h-11 items-center justify-center rounded-full bg-surface-container-low text-on-surface hover:text-primary hover:bg-surface transition-colors">
+              <Link to="/wishlist" className="relative hidden md:flex w-11 h-11 items-center justify-center rounded-full bg-surface-container-low text-on-surface hover:text-red-500 hover:bg-red-50 transition-colors">
                 <span className="material-symbols-outlined">favorite</span>
-              </button>
+                {wishlistCount > 0 && (
+                  <span className="absolute -top-1 -right-0.5 min-w-[20px] h-5 px-1 rounded-full bg-red-500 text-white text-[10px] font-black flex items-center justify-center shadow-md">
+                    {wishlistCount > 99 ? '99+' : wishlistCount}
+                  </span>
+                )}
+              </Link>
 
               <Link
                 to="/cart"
@@ -237,9 +227,9 @@ export default function Navbar() {
                 )}
               </Link>
 
-              <button className="hidden md:flex w-11 h-11 items-center justify-center rounded-full bg-surface-container-low text-on-surface hover:text-primary hover:bg-surface transition-colors">
+              <Link to={user ? (user.role === 'admin' ? '/admin' : '/profile') : '/login'} className="hidden md:flex w-11 h-11 items-center justify-center rounded-full bg-surface-container-low text-on-surface hover:text-primary hover:bg-surface transition-colors">
                 <span className="material-symbols-outlined">account_circle</span>
-              </button>
+              </Link>
 
               <button
                 type="button"
@@ -262,6 +252,21 @@ export default function Navbar() {
       >
         <div className="mx-4 mt-3 rounded-3xl border border-outline-variant/10 bg-white/95 backdrop-blur-xl shadow-[0px_24px_60px_-16px_rgba(15,23,42,0.18)] p-4">
           <div className="grid grid-cols-1 gap-2">
+             <Link
+                to={user ? (user.role === 'admin' ? '/admin' : '/profile') : '/login'}
+                className="flex items-center gap-4 rounded-2xl px-4 py-4 transition-all bg-surface-container-low text-slate-700 hover:bg-surface"
+              >
+                <span className="material-symbols-outlined">account_circle</span>
+                <span className="font-bold">{user ? 'My Profile' : 'Sign In'}</span>
+             </Link>
+             <Link
+                to="/wishlist"
+                className="flex items-center gap-4 rounded-2xl px-4 py-4 transition-all bg-surface-container-low text-slate-700 hover:bg-surface"
+              >
+                <span className="material-symbols-outlined text-red-500">favorite</span>
+                <span className="font-bold">Wishlist ({wishlistCount})</span>
+             </Link>
+             
             {mobileLinks.map((link) => {
               const active =
                 link.path.includes('?') ? isExactRouteActive(link.path) : isPathActive(link.path);

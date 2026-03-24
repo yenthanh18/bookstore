@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { catalogService } from '../services/catalogService';
-import { trackViewItemList, trackSearch } from '../services/analyticsService';
+import { trackViewItemList } from '../services/analyticsService';
 import ProductCard from '../components/shared/ProductCard';
 import { useNavigate } from 'react-router-dom';
 import { unwrapList } from '../services/apiClient';
@@ -15,7 +15,7 @@ export default function Home() {
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [searchQuery, setSearchQuery] = useState('');
+
 
   useEffect(() => {
     const fetchData = async () => {
@@ -54,12 +54,7 @@ export default function Home() {
     fetchData();
   }, []);
 
-  const handleSearch = (e) => {
-    e.preventDefault();
-    if (!searchQuery.trim()) return;
-    trackSearch(searchQuery);
-    navigate(`/shop?q=${encodeURIComponent(searchQuery)}`);
-  };
+
 
   const collectionCards = [
     {
@@ -157,23 +152,7 @@ export default function Home() {
         </div>
       </section>
 
-      <section className="px-8 -mt-12 mb-24 relative z-40">
-        <div className="max-w-4xl mx-auto">
-          <form onSubmit={handleSearch} className="relative bg-surface-container-lowest p-2 rounded-2xl shadow-[0px_24px_48px_-12px_rgba(74,64,224,0.08)] flex items-center border border-primary-container/20">
-            <span className="material-symbols-outlined px-6 text-on-surface-variant">search</span>
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search books, authors, genres, or describe what you want to read..."
-              className="w-full py-4 bg-transparent border-none focus:ring-0 text-lg placeholder:text-on-surface-variant/60 outline-none"
-            />
-            <button type="submit" className="bg-primary text-white px-8 py-4 rounded-xl font-bold hover:bg-primary-dim transition-colors mr-1 whitespace-nowrap">
-              Search
-            </button>
-          </form>
-        </div>
-      </section>
+
 
       <section className="px-8 mb-28">
         <div className="max-w-screen-2xl mx-auto">

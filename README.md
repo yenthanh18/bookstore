@@ -62,3 +62,35 @@ The API will run on `http://localhost:5000`.
    npm run dev
    ```
 The application will launch and proxy defaults to the Flask backend configuration.
+
+## Default Admin Credentials
+When the database is initialized, a default Super Admin account is provisioned automatically:
+- **Email:** `admin@smartbook.ai`
+- **Password:** `Admin123!`
+
+## Recommended Testing Steps
+
+1. **Login & Admin Dashboard:**
+   - Log in using the admin credentials above.
+   - Click "Admin Panel" in the Profile dropdown.
+   - Navigate to **Orders** to change processing status, or **Inventory** to edit/add new book stock!
+
+2. **Wishlist Syncing:**
+   - As a guest, heart 2 books (stored in localStorage).
+   - Log into a customer account -> Observe they are migrated/loaded from the DB!
+   - Log out -> Observe the wishlist correctly reverts to 0.
+
+3. **Search & Chatbot NLP:**
+   - Open Chatbot and search `harry` to see prioritized exact -> partial -> author -> semantic ranking.
+   - Ask `find me some book about Harry`. See how it intelligently falls back to keyword mapping before running TF-IDF.
+   - Ask for a direct recommendation: `"Recommend me The Great Gatsby"`.
+   
+4. **Checkout & GA4 Event Tracking:**
+   - Add items to the cart, observe real-time recalculations.
+   - Finish checkout to observe order generation.
+   - Check the console network tab to see Google Analytics events firing.
+
+5. **Product Detail & Recommendations:**
+   - Click any book to see the new premium two-column layout.
+   - Observe the horizontal scrollable "You Might Also Like" and "More from the same author" sections side-by-side.
+   - Note that books only show "Out of Stock" if their `stock_quantity` is 0, completely removing the buggy "Not Available" label.

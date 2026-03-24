@@ -1,146 +1,164 @@
-// analyticsService.js
-const GA_MEASUREMENT_ID = import.meta.env.VITE_GA_MEASUREMENT_ID;
+/**
+ * GA4 Analytics Tracking Utility
+ * Implements Google Analytics 4 e-commerce tracking events via dataLayer
+ */
 
-// Initialization Check
-export const initAnalytics = () => {
-  if (!GA_MEASUREMENT_ID) {
-    console.warn('GA4 Measurement ID not found. Analytics disabled.');
-    return false;
-  }
-  // If gtag exists globally (e.g. loaded via index.html), great.
-  if (typeof window.gtag === 'function') {
-    return true;
-  }
-  return false;
+export const initGA4 = () => {
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){ window.dataLayer.push(arguments); }
+    window.gtag = gtag;
+    gtag('js', new Date());
+    // In production, configure GA4 measurement id in .env
+    const GA_ID = import.meta.env.VITE_GA4_MEASUREMENT_ID || 'G-XXXXXXXXXX';
+    gtag('config', GA_ID);
 };
 
-const pushEvent = (eventName, payload = {}) => {
-  if (!initAnalytics()) {
-    console.log(`[Analytics Mock] ${eventName}`, payload);
-    return;
-  }
-  window.gtag('event', eventName, payload);
+export const trackPageView = (path) => {
+    if (!window.gtag) return;
+    window.gtag('event', 'page_view', {
+        page_path: path
+    });
+};
+
+export const trackSearch = (search_term) => {
+    if (!window.gtag) return;
+    window.gtag('event', 'search', {
+        search_term
+    });
 };
 
 export const trackViewItem = (item) => {
-  pushEvent('view_item', {
-    currency: 'USD',
-    value: item.price,
-    items: [
-      {
-        item_id: item.product_id,
-        item_name: item.title,
-        item_category: item.category,
-        price: item.price
-      }
-    ]
-  });
+    if (!window.gtag) return;
+    window.gtag('event', 'view_item', {
+        currency: 'USD',
+        value: Number(item.final_price),
+        items: [{
+            item_id: item.product_id || item.id,
+            item_name: item.title,
+            item_category: item.category,
+            price: Number(item.final_price)
+        }]
+    });
+};
+
+export const trackClickRecommendation = (item, listName) => {
+    if (!window.gtag) return;
+    window.gtag('event', 'select_item', {
+        item_list_name: listName,
+        items: [{
+            item_id: item.product_id || item.id,
+            item_name: item.title,
+            item_category: item.category,
+            price: Number(item.final_price)
+        }]
+    });
+};
+
+export const trackViewItemList = (items, listName = 'General') => {
+    if (!window.gtag) return;
+    window.gtag('event', 'view_item_list', {
+        item_list_name: listName,
+        items: items.map(item => ({
+            item_id: item.product_id || item.id,
+            item_name: item.title,
+            item_category: item.category,
+            price: Number(item.final_price)
+        }))
+    });
 };
 
 export const trackSelectItem = (item, listName = 'General') => {
-  pushEvent('select_item', {
-    item_list_name: listName,
-    items: [{
-      item_id: item.product_id,
-      item_name: item.title,
-      price: item.price
-    }]
-  });
-};
-
-export const trackSearch = (searchTerm) => {
-  pushEvent('search', {
-    search_term: searchTerm
-  });
-};
-
-export const trackViewItemList = (items, listName) => {
-  pushEvent('view_item_list', {
-    item_list_name: listName,
-    items: items.map(item => ({
-      item_id: item.product_id,
-      item_name: item.title,
-      price: item.price
-    }))
-  });
+    if (!window.gtag) return;
+    window.gtag('event', 'view_item', {
+        item_list_name: listName,
+        items: [{
+            item_id: item.product_id || item.id,
+            item_name: item.title,
+            item_category: item.category,
+            price: Number(item.final_price)
+        }]
+    });
 };
 
 export const trackAddToCart = (item, quantity = 1) => {
-  pushEvent('add_to_cart', {
-    currency: 'USD',
-    value: item.price * quantity,
-    items: [{
-      item_id: item.product_id,
-      item_name: item.title,
-      price: item.price,
-      quantity
-    }]
-  });
+    if (!window.gtag) return;
+    window.gtag('event', 'add_to_cart', {
+        currency: 'USD',
+        value: Number(item.final_price) * quantity,
+        items: [{
+            item_id: item.product_id || item.id,
+            item_name: item.title,
+            item_category: item.category,
+            price: Number(item.final_price),
+            quantity: quantity
+        }]
+    });
 };
 
 export const trackViewCart = (items, totalValue) => {
-  pushEvent('view_cart', {
-    currency: 'USD',
-    value: totalValue,
-    items: items.map(item => ({
-      item_id: item.product_id,
-      item_name: item.title,
-      quantity: item.quantity,
-      price: item.price
-    }))
-  });
+    if (!window.gtag) return;
+    window.gtag('event', 'view_cart', {
+        currency: 'USD',
+        value: totalValue,
+        items: items.map(item => ({
+            item_id: item.product_id || item.id,
+            item_name: item.title,
+            price: Number(item.final_price),
+            quantity: item.quantity
+        }))
+    });
 };
 
 export const trackBeginCheckout = (items, totalValue) => {
-  pushEvent('begin_checkout', {
-    currency: 'USD',
-    value: totalValue,
-    items: items.map(item => ({
-      item_id: item.product_id,
-      item_name: item.title,
-      quantity: item.quantity,
-      price: item.price
-    }))
-  });
+    if (!window.gtag) return;
+    window.gtag('event', 'begin_checkout', {
+        currency: 'USD',
+        value: totalValue,
+        items: items.map(item => ({
+            item_id: item.product_id || item.id,
+            item_name: item.title,
+            price: Number(item.final_price),
+            quantity: item.quantity
+        }))
+    });
 };
 
-export const trackPurchaseDemo = (items, totalValue, transactionId) => {
-  pushEvent('purchase_demo', {
-    transaction_id: transactionId,
-    value: totalValue,
-    currency: 'USD',
-    items: items.map(item => ({
-      item_id: item.product_id,
-      item_name: item.title,
-      quantity: item.quantity,
-      price: item.price
-    }))
-  });
+export const trackPurchaseDemo = (items, totalValue, transaction_id) => {
+    if (!window.gtag) return;
+    window.gtag('event', 'purchase', {
+        transaction_id: transaction_id,
+        value: totalValue,
+        tax: Number((totalValue * 0.08).toFixed(2)),
+        currency: 'USD',
+        items: items.map(item => ({
+            item_id: item.product_id || item.id,
+            item_name: item.title,
+            price: Number(item.final_price),
+            quantity: item.quantity
+        }))
+    });
 };
 
-export const trackSelectPromotion = (promotionName, items = []) => {
-  pushEvent('select_promotion', {
-    promotion_name: promotionName,
-    items: items.map(item => ({
-      item_id: item.id,
-      item_name: item.title
-    }))
-  });
+export const trackOpenChatbot = () => {
+    if (!window.gtag) return;
+    window.gtag('event', 'chatbot_query', {
+        action: 'open_chatbot'
+    });
 };
 
-export const trackClickRecommendation = (item, source = 'automated') => {
-  pushEvent('click_recommendation', {
-    recommendation_source: source,
-    item_id: item.id,
-    item_name: item.title
-  });
+export const trackSendChatMessage = (messageType = 'text') => {
+    if (!window.gtag) return;
+    window.gtag('event', 'chatbot_query', {
+        action: 'send_message',
+        message_type: messageType
+    });
 };
 
-export const trackOpenChatbot = () => pushEvent('open_chatbot');
-export const trackSendChatMessage = (msgType) => pushEvent('send_chat_message', { message_type: msgType });
 export const trackChatbotRecommendationClick = (item) => {
-  pushEvent('chatbot_recommendation_click', {
-    item_id: item.id,
-    item_name: item.title
-  });
+    if (!window.gtag) return;
+    window.gtag('event', 'recommendation_click', {
+        action: 'click_chat_recommendation',
+        item_id: item.product_id || item.id,
+        item_name: item.title
+    });
 };

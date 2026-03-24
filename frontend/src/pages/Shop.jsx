@@ -3,7 +3,9 @@ import { useSearchParams } from 'react-router-dom';
 import { catalogService } from '../services/catalogService';
 import { trackViewItemList } from '../services/analyticsService';
 import ProductCard from '../components/shared/ProductCard';
+import SkeletonCard from '../components/shared/SkeletonCard';
 import { unwrapList } from '../services/apiClient';
+import { useSEO } from '../hooks/useSEO';
 
 const DEFAULT_SORT = 'trending';
 
@@ -95,13 +97,18 @@ export default function Shop() {
   }, [searchParams, selectedCategory, q, filter]);
 
   const heading = useMemo(() => {
-    if (q) return `Search results for "${q}"`;
+
     if (filter === 'bestseller' || filter === 'bestsellers') return 'Bestselling Books';
     if (filter === 'deal' || filter === 'deals') return 'Books on Deal';
     if (filter === 'ai-picks' || filter === 'featured') return 'AI Picks';
     if (selectedCategory && selectedCategory !== 'All Categories') return selectedCategory;
     return 'Explore the collection';
   }, [q, filter, selectedCategory]);
+
+  useSEO({
+    title: `Shop ${heading !== 'Explore the collection' ? '- ' + heading : ''}`,
+    description: 'Browse the SmartBook catalog of intelligently curated books.'
+  });
 
   const handleCategoryChange = (cat) => {
     const next = new URLSearchParams(searchParams);
@@ -194,9 +201,10 @@ export default function Shop() {
         </div>
 
         {loading ? (
-          <div className="flex flex-col items-center justify-center py-20">
-            <div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin mb-4"></div>
-            <p className="text-on-surface-variant">Searching the archives...</p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-8">
+            {Array.from({ length: 8 }).map((_, i) => (
+              <SkeletonCard key={i} />
+            ))}
           </div>
         ) : error ? (
           <div className="text-center py-20 bg-surface-container-lowest rounded-2xl shadow-sm border border-outline-variant/10">
