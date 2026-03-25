@@ -626,6 +626,29 @@ def manage_wishlist(current_user):
             db.session.commit()
             return ok({'status': 'added', 'product_id': product_id})
 
+# SAME AUTHOR
+@app.route("/api/same-author", methods=["GET"])
+def get_same_author_books():
+    title = request.args.get("title", "").strip()
+    if not title:
+        return jsonify({"success": False, "error": "Missing title"}), 400
+
+    target_book = Book.query.filter(Book.title.ilike(f"%{title}%")).first()
+    if not target_book or not target_book.authors:
+        return jsonify({"success": True, "data": []})
+
+    books = (
+        Book.query
+        .filter(Book.authors == target_book.authors, Book.product_id != target_book.product_id)
+        .order_by(Book.average_rating.desc())
+        .limit(8)
+        .all()
+    )
+
+    return jsonify({
+        "success": True,
+        "data": [b.to_dict() for b in books]
+    })
 
 # ======================================================
 # CHECKOUT API
