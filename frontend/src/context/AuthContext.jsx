@@ -7,6 +7,8 @@ export function AuthProvider({ children }) {
   const [token, setToken] = useState(localStorage.getItem('token') || null);
   const [loading, setLoading] = useState(true);
 
+  const API_BASE = import.meta.env.VITE_API_BASE_URL;
+
   useEffect(() => {
     async function fetchMe() {
       if (!token) {
@@ -14,7 +16,8 @@ export function AuthProvider({ children }) {
         return;
       }
       try {
-        const res = await fetch('http://localhost:5000/api/auth/me', {
+        const res = await fetch(`${API_BASE}/auth/me`, {
+        /*const res = await fetch('http://localhost:5000/api/auth/me', {*/
           headers: { 'Authorization': `Bearer ${token}` }
         });
         const data = await res.json();
@@ -36,8 +39,6 @@ export function AuthProvider({ children }) {
 
   const login = async (email, password) => {
     /*const res = await fetch('http://localhost:5000/api/auth/login', {*/
-
-    const API_BASE = import.meta.env.VITE_API_BASE_URL;
 
     const res = await fetch(`${API_BASE}/auth/login`, {
       method: 'POST',
