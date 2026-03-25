@@ -52,9 +52,7 @@ bcrypt = Bcrypt(app)
 
 DATA_FILE = os.path.join(basedir, "smartbook_catalog.csv")
 ROOT_VECTORIZER_FILE = os.path.join(basedir, "vectorizer.pkl")
-ROOT_SIMILARITY_FILE = os.path.join(basedir, "similarity.npy")
 MODELS_VECTORIZER_FILE = os.path.join(basedir, "models", "vectorizer.pkl")
-MODELS_SIMILARITY_FILE = os.path.join(basedir, "models", "similarity.npy")
 
 # Global references
 vectorizer = None
@@ -96,12 +94,7 @@ def initialize_ai() -> None:
         else:
             logger.warning("Catalog CSV not found at %s", DATA_FILE)
 
-        similarity_file = _existing_path(ROOT_SIMILARITY_FILE, MODELS_SIMILARITY_FILE)
-        if similarity_file:
-            similarity_matrix = np.load(similarity_file)
-            logger.info("Loaded similarity matrix from %s", similarity_file)
-        else:
-            logger.warning("No similarity.npy file found.")
+        logger.info("Skipping similarity.npy loading. Recommendations will use TF-IDF + metadata fallback.")
 
         vectorizer_file = _existing_path(ROOT_VECTORIZER_FILE, MODELS_VECTORIZER_FILE)
         if vectorizer_file:
@@ -227,8 +220,9 @@ def api_health():
             "users_count": users_count,
             "orders_count": orders_count,
             "vectorizer_loaded": vectorizer is not None,
-            "similarity_loaded": similarity_matrix is not None,
+            "similarity_loaded": False,
             "tfidf_ready": tfidf_matrix is not None,
+            "recommendation_ready": tfidf_matrix is not None,
         }
     ), 200
 
@@ -545,49 +539,99 @@ def semantic_search():
 
 
 @app.route("/api/recommend", methods=["GET"])
-def recommend_similar():
+@app.route("/api/recommend/<int:product_id>", methods=["GET"])
+def recommend_similar(product_id=None):
     title = request.args.get("title", "").strip()
     top_n = int(request.args.get("top_n", 6))
-    if not title:
-        return error("Missing title")
 
-    book = Book.query.filter(Book.title.ilike(f"%{title}%")).first()
+    book = None
+    if product_id is not None:
+        book = db.session.get(Book, product_id)
+    elif title:
+        book = Book.query.filter(Book.title.ilike(f"%{title}%")).first()
+    else:
+        return error("Missing title or product_id")
+
     if not book:
         return ok([])
 
-    if similarity_matrix is None:
-        fallback_books = (
-            Book.query.filter(Book.category == book.category, Book.product_id != book.product_id)
-            .order_by((Book.average_rating * Book.ratings_count).desc())
+    seen_ids = {book.product_id}
+    recommendations = []
+
+    def add_books(book_list):
+        for item in book_list:
+            if item and item.product_id not in seen_ids:
+                seen_ids.add(item.product_id)
+                recommendations.append(item)
+
+    if vectorizer is not None and tfidf_matrix is not None:
+        try:
+            source_text = None
+            idx = pid_to_index.get(book.product_id)
+            if idx is not None and idx < len(df_ai_texts):
+                source_text = df_ai_texts[idx]
+            if not source_text:
+                source_text = " ".join(
+                    [
+                        str(book.title or ""),
+                        str(book.authors or ""),
+                        str(book.category or ""),
+                        str(getattr(book, "description", "") or ""),
+                    ]
+                ).strip()
+
+            if source_text:
+                q_vec = vectorizer.transform([source_text])
+                if q_vec.nnz > 0:
+                    scores = cosine_similarity(q_vec, tfidf_matrix).flatten()
+                    top_indices = scores.argsort()[-80:][::-1]
+                    semantic_ids = []
+                    for idx in top_indices:
+                        pid = index_to_pid.get(idx)
+                        if not pid or pid == book.product_id:
+                            continue
+                        if scores[idx] < 0.08:
+                            continue
+                        semantic_ids.append(pid)
+                        if len(semantic_ids) >= top_n * 3:
+                            break
+
+                    if semantic_ids:
+                        semantic_books = Book.query.filter(Book.product_id.in_(semantic_ids)).all()
+                        semantic_map = {b.product_id: b for b in semantic_books}
+                        ordered_semantic = [semantic_map[pid] for pid in semantic_ids if pid in semantic_map]
+                        add_books(ordered_semantic)
+        except Exception:
+            logger.exception("TF-IDF recommendation fallback failed")
+
+    if len(recommendations) < top_n and book.authors:
+        author_books = (
+            Book.query.filter(Book.authors == book.authors, Book.product_id != book.product_id)
+            .order_by(Book.average_rating.desc(), Book.ratings_count.desc())
             .limit(top_n)
             .all()
         )
-        return ok([b.to_dict() for b in fallback_books])
+        add_books(author_books)
 
-    idx = pid_to_index.get(book.product_id)
-    if idx is None:
-        fallback_books = (
+    if len(recommendations) < top_n and book.category:
+        category_books = (
             Book.query.filter(Book.category == book.category, Book.product_id != book.product_id)
-            .order_by((Book.average_rating * Book.ratings_count).desc())
-            .limit(top_n)
+            .order_by(Book.average_rating.desc(), Book.ratings_count.desc())
+            .limit(top_n * 2)
             .all()
         )
-        return ok([b.to_dict() for b in fallback_books])
+        add_books(category_books)
 
-    sim_scores = similarity_matrix[idx]
-    top_sim_indices = sim_scores.argsort()[-51:][::-1]
-    candidate_pids = [index_to_pid[i] for i in top_sim_indices if i != idx and i in index_to_pid]
-    candidates = Book.query.filter(Book.product_id.in_(candidate_pids)).all()
+    if len(recommendations) < top_n:
+        popular_books = (
+            Book.query.filter(Book.product_id != book.product_id)
+            .order_by(Book.average_rating.desc(), Book.ratings_count.desc())
+            .limit(top_n * 2)
+            .all()
+        )
+        add_books(popular_books)
 
-    scored_candidates = []
-    for c in candidates:
-        c_idx = pid_to_index.get(c.product_id)
-        s_score = sim_scores[c_idx] if c_idx is not None else 0
-        ai_score = calculate_ai_score(np.array([s_score]), np.array([c.average_rating]), np.array([c.ratings_count]))[0]
-        scored_candidates.append((ai_score, c))
-
-    scored_candidates.sort(key=lambda x: x[0], reverse=True)
-    return ok([c[1].to_dict() for c in scored_candidates[:top_n]])
+    return ok([b.to_dict() for b in recommendations[:top_n]])
 
 
 @app.route("/api/chatbot", methods=["POST"])
@@ -703,18 +747,24 @@ def manage_wishlist(current_user):
 
 
 @app.route("/api/same-author", methods=["GET"])
-def get_same_author_books():
+@app.route("/api/same-author/<int:product_id>", methods=["GET"])
+def get_same_author_books(product_id=None):
     title = request.args.get("title", "").strip()
-    if not title:
-        return error("Missing title")
 
-    target_book = Book.query.filter(Book.title.ilike(f"%{title}%")).first()
+    target_book = None
+    if product_id is not None:
+        target_book = db.session.get(Book, product_id)
+    elif title:
+        target_book = Book.query.filter(Book.title.ilike(f"%{title}%")).first()
+    else:
+        return error("Missing title or product_id")
+
     if not target_book or not target_book.authors:
         return ok([])
 
     books = (
         Book.query.filter(Book.authors == target_book.authors, Book.product_id != target_book.product_id)
-        .order_by(Book.average_rating.desc())
+        .order_by(Book.average_rating.desc(), Book.ratings_count.desc())
         .limit(8)
         .all()
     )
