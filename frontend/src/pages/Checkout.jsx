@@ -8,6 +8,7 @@ export default function Checkout() {
   const navigate = useNavigate();
   const { cartItems, summary, clearCart, updateQuantity } = useCart();
   const { token, user } = useAuth();
+  const API_BASE = import.meta.env.VITE_API_BASE_URL;
   
   const [formData, setFormData] = useState({
     email: user?.email || '', customer_name: user?.name || '', phone: '', address: '', payment_method: 'Cash on Delivery'
@@ -40,7 +41,7 @@ export default function Checkout() {
         }))
       };
 
-      const res = await fetch('http://localhost:5000/api/checkout', {
+      const res = await fetch(`${API_BASE}/checkout`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

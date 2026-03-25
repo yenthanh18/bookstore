@@ -5,7 +5,8 @@ export default function AdminBooks() {
   const { token } = useAuth();
   const [books, setBooks] = useState([]);
   const [loading, setLoading] = useState(true);
-  
+  const API_BASE = import.meta.env.VITE_API_BASE_URL;
+
   // Modal state
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingBook, setEditingBook] = useState(null); // null means new book
@@ -19,7 +20,7 @@ export default function AdminBooks() {
 
   const fetchBooks = () => {
     setLoading(true);
-    fetch('http://localhost:5000/api/books?limit=50&sort_by=popular')
+    fetch(`${API_BASE}/books?limit=50&sort_by=popular`)
     .then(r => r.json())
     .then(d => {
       if (d.success) setBooks(d.data);
@@ -48,9 +49,9 @@ export default function AdminBooks() {
   const handleSave = async (e) => {
     e.preventDefault();
     const isNew = !editingBook;
-    const url = isNew 
-      ? 'http://localhost:5000/api/admin/books' 
-      : `http://localhost:5000/api/admin/books/${editingBook.product_id}`;
+    const url = isNew
+      ? `${API_BASE}/admin/books`
+      : `${API_BASE}/admin/books/${editingBook.product_id}`;
     
     try {
       const res = await fetch(url, {

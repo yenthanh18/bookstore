@@ -6,14 +6,15 @@ export default function AdminOrders() {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedOrder, setSelectedOrder] = useState(null);
-
+  const API_BASE = import.meta.env.VITE_API_BASE_URL;
+  
   useEffect(() => {
     fetchOrders();
   }, [token]);
 
   const fetchOrders = () => {
     setLoading(true);
-    fetch('http://localhost:5000/api/admin/orders?limit=50', {
+    fetch(`${API_BASE}/admin/orders?limit=50`, {
       headers: { 'Authorization': `Bearer ${token}` }
     })
     .then(r => r.json())
@@ -26,7 +27,7 @@ export default function AdminOrders() {
 
   const updateStatus = async (orderId, newStatus) => {
     try {
-      const res = await fetch(`http://localhost:5000/api/admin/orders/${orderId}`, {
+      const res = await fetch(`${API_BASE}/admin/orders/${orderId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
         body: JSON.stringify({ status: newStatus })

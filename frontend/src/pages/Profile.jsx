@@ -7,6 +7,7 @@ export default function Profile() {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
+  const API_BASE = import.meta.env.VITE_API_BASE_URL;
 
   useEffect(() => {
     if (!authLoading && !user) navigate('/login');
@@ -14,7 +15,7 @@ export default function Profile() {
 
   useEffect(() => {
     if (token) {
-      fetch('http://localhost:5000/api/user/orders', {
+      fetch(`${API_BASE}/user/orders`, {
         headers: { 'Authorization': `Bearer ${token}` }
       })
       .then(res => res.json())

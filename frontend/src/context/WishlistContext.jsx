@@ -7,12 +7,13 @@ export function WishlistProvider({ children }) {
   const { user, token } = useAuth();
   const [wishlistItems, setWishlistItems] = useState([]);
   const [loading, setLoading] = useState(false);
+  const API_BASE = import.meta.env.VITE_API_BASE_URL;
 
   // Sync wishlist based on auth status
   useEffect(() => {
     if (user && token) {
       setLoading(true);
-      fetch('http://localhost:5000/api/wishlist', {
+      fetch(`${API_BASE}/wishlist`, {
         headers: { 'Authorization': `Bearer ${token}` }
       })
       .then(res => res.json())
@@ -33,7 +34,7 @@ export function WishlistProvider({ children }) {
   const toggleWishlist = async (product_id) => {
     if (user && token) {
       try {
-        const res = await fetch('http://localhost:5000/api/wishlist', {
+        const res = await fetch(`${API_BASE}/wishlist`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
           body: JSON.stringify({ product_id })

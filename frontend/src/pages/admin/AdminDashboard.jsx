@@ -4,9 +4,10 @@ import { useAuth } from '../../context/AuthContext';
 export default function AdminDashboard() {
   const { token } = useAuth();
   const [stats, setStats] = useState(null);
+  const API_BASE = import.meta.env.VITE_API_BASE_URL;
 
   useEffect(() => {
-    fetch('http://localhost:5000/api/admin/stats', {
+    fetch(`${API_BASE}/admin/stats`, {
       headers: { 'Authorization': `Bearer ${token}` }
     })
     .then(r => r.json())
