@@ -12,13 +12,16 @@ from flask_cors import CORS
 from sklearn.metrics.pairwise import cosine_similarity
 from models import db, User, Book, Order, OrderItem, Wishlist
 from flask_bcrypt import Bcrypt
+from home_api import home_bp
 
 # ======================================================
 # SMARTBOOK AI STORE - PRODUCTION FLASK API
 # ======================================================
 
 app = Flask(__name__)
-CORS(app)
+#CORS(app)
+CORS(app, resources={r"/api/*": {"origins": "*"}})
+app.register_blueprint(home_bp, url_prefix="/api")
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s | %(levelname)s | %(message)s")
 logger = logging.getLogger("smartbook_api_pro")
