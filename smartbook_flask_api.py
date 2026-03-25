@@ -496,7 +496,17 @@ def recommend_similar():
         
     idx = pid_to_index.get(book.product_id)
     if idx is None:
-        return ok([])
+        fallback_books = (
+        Book.query
+        .filter(
+            Book.category == book.category,
+            Book.product_id != book.product_id
+        )
+        .order_by((Book.average_rating * Book.ratings_count).desc())
+        .limit(top_n)
+        .all()
+        )
+        return ok([b.to_dict() for b in fallback_books])
         
     sim_scores = similarity_matrix[idx]
     
