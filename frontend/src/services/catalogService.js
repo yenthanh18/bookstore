@@ -9,7 +9,8 @@ export const catalogService = {
   
   getRecommendations: (title) => apiClient(`/recommend${buildQueryString({ title })}`),
   
-  getAuthorBooks: (title) => apiClient(`/author${buildQueryString({ title })}`),
+  /*getAuthorBooks: (title) => apiClient(`/author${buildQueryString({ title })}`),*/
+  getAuthorBooks: (title) => apiClient(`/same-author${buildQueryString({ title })}`),
   
   searchBooks: (q) => apiClient(`/search${buildQueryString({ q })}`),
   
