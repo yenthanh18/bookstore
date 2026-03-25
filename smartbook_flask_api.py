@@ -491,7 +491,7 @@ def recommend_similar():
     top_n = int(request.args.get('top_n', 6))
     
     book = Book.query.filter(Book.title.ilike(f"%{title}%")).first()
-    if not book or not similarity_matrix is not None:
+    if not book or similarity_matrix is None:
         return ok([])
         
     idx = pid_to_index.get(book.product_id)
