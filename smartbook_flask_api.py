@@ -216,7 +216,19 @@ def get_user_orders(current_user):
     orders = Order.query.filter_by(user_id=current_user.id).order_by(Order.created_at.desc()).all()
     return ok([o.to_dict() for o in orders])
 
+#api/health
+@app.route("/api/health", methods=["GET"])
+def api_health():
+    try:
+        books_count = Book.query.count()
+    except Exception:
+        books_count = 0
 
+    return jsonify({
+        "status": "ok",
+        "success": True,
+        "books_count": books_count
+    }), 200
 # ======================================================
 # ADMIN API
 # ======================================================
