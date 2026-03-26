@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { catalogService } from '../services/catalogService';
 /*import { cartService } from '../services/cartService';*/
@@ -9,6 +9,12 @@ import { trackViewItem, trackAddToCart, trackClickRecommendation } from '../serv
 import ProductCard from '../components/shared/ProductCard';
 import { unwrapObject, unwrapList } from '../services/apiClient';
 import { useSEO } from '../hooks/useSEO';
+
+const safeGtag = (eventName, params = {}) => {
+  if (typeof window !== "undefined" && typeof window.gtag === "function") {
+    window.gtag("event", eventName, params);
+  }
+};
 
 export default function ProductDetail() {
   const { id } = useParams();
@@ -22,6 +28,7 @@ export default function ProductDetail() {
   const { addToCart } = useCart();
 
   const { wishlistItems, toggleWishlist } = useWishlist();
+  const pageEnterTimeRef = useRef(Date.now());
 
   useSEO({
     title: product ? product.title : 'Loading Book...',
@@ -88,6 +95,24 @@ export default function ProductDetail() {
       setAddingToCart(false);
     }
   };*/
+
+  useEffect(() => {
+  return () => {
+    if (!product) return;
+
+    const durationSeconds = Math.round(
+      (Date.now() - pageEnterTimeRef.current) / 1000
+    );
+
+    safeGtag("time_on_page", {
+      page_type: "product_detail",
+      item_id: product.product_id,
+      item_name: product.title,
+      duration_seconds: durationSeconds,
+    });
+  };
+  }, [product]);
+
 
   const handleAddToCart = async () => {
   if (!product || product.stock_quantity <= 0) return;

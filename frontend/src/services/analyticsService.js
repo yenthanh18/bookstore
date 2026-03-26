@@ -69,7 +69,7 @@ export const trackViewItemList = (items, listName = 'General') => {
 
 export const trackSelectItem = (item, listName = 'General') => {
     if (!window.gtag) return;
-    window.gtag('event', 'view_item', {
+    window.gtag('event', 'select_item', {
         item_list_name: listName,
         items: [{
             item_id: item.product_id || item.id,
@@ -160,5 +160,16 @@ export const trackChatbotRecommendationClick = (item) => {
         action: 'click_chat_recommendation',
         item_id: item.product_id || item.id,
         item_name: item.title
+    });
+};
+
+export const trackTimeOnPage = (pageType, seconds, item = null) => {
+    if (!window.gtag) return;
+
+    window.gtag('event', 'time_on_page', {
+        page_type: pageType,
+        duration_seconds: seconds,
+        item_id: item?.product_id || item?.id || null,
+        item_name: item?.title || null
     });
 };
