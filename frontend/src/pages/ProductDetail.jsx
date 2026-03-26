@@ -5,7 +5,8 @@ import { catalogService } from '../services/catalogService';
 
 import { useCart } from '../context/CartContext';
 import { useWishlist } from '../context/WishlistContext';
-import { trackViewItem, trackAddToCart, trackClickRecommendation } from '../services/analyticsService';
+/*import { trackViewItem, trackAddToCart, trackClickRecommendation } from '../services/analyticsService';*/
+import { trackViewItem, trackAddToCart, trackClickRecommendation, trackTimeOnPage } from '../services/analyticsService';
 import ProductCard from '../components/shared/ProductCard';
 import { unwrapObject, unwrapList } from '../services/apiClient';
 import { useSEO } from '../hooks/useSEO';
@@ -97,20 +98,15 @@ export default function ProductDetail() {
   };*/
 
   useEffect(() => {
-  return () => {
-    if (!product) return;
+    return () => {
+      if (!product) return;
 
-    const durationSeconds = Math.round(
-      (Date.now() - pageEnterTimeRef.current) / 1000
-    );
+      const durationSeconds = Math.round(
+        (Date.now() - pageEnterTimeRef.current) / 1000
+      );
 
-    safeGtag("time_on_page", {
-      page_type: "product_detail",
-      item_id: product.product_id,
-      item_name: product.title,
-      duration_seconds: durationSeconds,
-    });
-  };
+      trackTimeOnPage('product_detail', durationSeconds, product);
+    };
   }, [product]);
 
 

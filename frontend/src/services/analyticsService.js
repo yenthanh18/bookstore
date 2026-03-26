@@ -4,13 +4,11 @@
  */
 
 export const initGA4 = () => {
-    window.dataLayer = window.dataLayer || [];
-    function gtag(){ window.dataLayer.push(arguments); }
-    window.gtag = gtag;
-    gtag('js', new Date());
-    // In production, configure GA4 measurement id in .env
-    const GA_ID = import.meta.env.VITE_GA4_MEASUREMENT_ID || 'G-XXXXXXXXXX';
-    gtag('config', GA_ID);
+    if (typeof window === 'undefined') return;
+    if (typeof window.gtag !== 'function') return;
+
+    const GA_ID = import.meta.env.VITE_GA4_MEASUREMENT_ID || 'G-95CH8TEX04';
+    window.gtag('config', GA_ID);
 };
 
 export const trackPageView = (path) => {
@@ -172,4 +170,13 @@ export const trackTimeOnPage = (pageType, seconds, item = null) => {
         item_id: item?.product_id || item?.id || null,
         item_name: item?.title || null
     });
+};
+
+
+export const trackChatbotQuery = (query) => {
+  if (!window.gtag) return;
+
+  window.gtag('event', 'chatbot_query', {
+    query_text: query
+  });
 };
